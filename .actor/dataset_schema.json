@@ -1,0 +1,72 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "actorSpecification": 1,
+    "title": "Dataset Schema",
+    "fields": {
+        "type": "object",
+        "properties": {
+            "idCompra": { "title": "ID Compra", "type": "string" },
+            "estadoCompra": { "title": "Estado Compra", "type": "string", "description": "1, 2 or 3" },
+            "estadoCompraLabel": { "title": "Estado", "type": "string" },
+            "reparticion": { "title": "Reparticion", "type": "string" },
+            "tipoCompra": { "title": "Tipo de Compra", "type": "string" },
+            "rubro": { "title": "Rubro", "type": "string" },
+            "numeroExpediente": { "title": "Numero de Expediente", "type": "string" },
+            "numeroConvocatoria": { "title": "Numero de Convocatoria", "type": ["string", "null"] },
+            "primerRenglon": { "title": "Primer Renglon", "type": "string" },
+            "valorPliego": { "title": "Valor del Pliego", "type": "string" },
+            "presupuestoOficial": { "title": "Presupuesto Oficial", "type": ["string", "null"] },
+            "garantiaOfertaExigida": { "title": "Garantia de Oferta Exigida", "type": ["string", "null"] },
+            "fechaAperturaSobres": { "title": "Fecha de Apertura de Sobres", "type": ["string", "null"] },
+            "fechaAdjudicacion": { "title": "Fecha de Adjudicacion", "type": ["string", "null"] },
+            "lugarApertura": { "title": "Lugar de Apertura", "type": ["string", "null"] },
+            "informesAdquisicionPliegos": { "title": "Informes / Adquisicion de Pliegos", "type": ["string", "null"] },
+            "autorizadoPor": { "title": "Autorizado Por", "type": ["string", "null"] },
+            "objetoLibre": { "title": "Objeto (texto libre)", "type": ["string", "null"] },
+            "renglones": {
+                "title": "Renglones",
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "renglon": { "type": "string" },
+                        "descripcion": { "type": "string" }
+                    }
+                }
+            },
+            "pliegoPdfUrl": { "title": "Pliego PDF URL", "type": ["string", "null"] },
+            "listingPageUrl": { "title": "Listing Page URL", "type": "string" },
+            "scrapedAt": { "title": "Scraped at", "type": "string" }
+        }
+    },
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": [
+                    "idCompra",
+                    "tipoCompra",
+                    "reparticion",
+                    "rubro",
+                    "numeroExpediente",
+                    "fechaAperturaSobres",
+                    "estadoCompraLabel",
+                    "pliegoPdfUrl"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "columns": [
+                    { "label": "ID", "format": "text", "field": "idCompra" },
+                    { "label": "Tipo", "format": "text", "field": "tipoCompra" },
+                    { "label": "Reparticion", "format": "text", "field": "reparticion" },
+                    { "label": "Rubro", "format": "text", "field": "rubro" },
+                    { "label": "Expediente", "format": "text", "field": "numeroExpediente" },
+                    { "label": "Apertura", "format": "text", "field": "fechaAperturaSobres" },
+                    { "label": "Estado", "format": "text", "field": "estadoCompraLabel" },
+                    { "label": "Pliego", "format": "link", "field": "pliegoPdfUrl" }
+                ]
+            }
+        }
+    }
+}

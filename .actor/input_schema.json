@@ -1,0 +1,32 @@
+{
+    "$schema": "https://apify.com/schemas/v1/input.ide.json",
+    "title": "Tucuman Compras Monitor Configuration",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "estados": {
+            "title": "States to extract",
+            "type": "array",
+            "description": "Which procurement states to fetch (estado_compra on the portal). 1 = upcoming opening, 2 = in adjudication, 3 = already awarded.",
+            "editor": "select",
+            "items": {
+                "type": "string",
+                "enum": ["1", "2", "3"],
+                "enumTitles": [
+                    "Apertura proxima (upcoming opening)",
+                    "En proceso de adjudicacion (in adjudication)",
+                    "Adjudicadas (awarded)"
+                ]
+            },
+            "default": ["1"],
+            "minItems": 1
+        },
+        "maxItems": {
+            "title": "Max tenders to extract",
+            "type": "integer",
+            "description": "Hard cap on the number of tenders returned this run, across all selected states. The portal lists only 5 tenders per page, so a high value across multiple states means many sequential requests - estado 2 alone has 3700+ historical records. Start small.",
+            "default": 100,
+            "minimum": 1
+        }
+    }
+}

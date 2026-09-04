@@ -1,0 +1,16 @@
+{
+    "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+    "actorSpecification": 1,
+    "name": "tucuman-compras-monitor",
+    "title": "Tucuman Compras Monitor",
+    "description": "Extracts public tenders (licitaciones publicas, privadas, contrataciones directas) from the Province of Tucuman, Argentina's official procurement portal, across upcoming/in-adjudication/awarded states, with direct PDF pliego links.",
+    "version": "1.0",
+    "buildTag": "latest",
+    "minMemoryMbytes": 256,
+    "maxMemoryMbytes": 512,
+    "meta": { "templateId": "ts-crawlee-cheerio", "generatedBy": "Claude Code with Claude Sonnet 5" },
+    "inputSchema": "./input_schema.json",
+    "outputSchema": "./output_schema.json",
+    "storages": { "dataset": "./dataset_schema.json" },
+    "dockerfile": "../Dockerfile"
+}
