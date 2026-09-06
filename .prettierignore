@@ -1,3 +1,10 @@
 .prettierignore
 dist
 node_modules
+# Raw captured bytes from the live portal (ISO-8859-1, deliberately malformed HTML matching
+# the real site - see AGENTS.md). Prettier's HTML parser cannot even parse these, let alone
+# reformat them without risking the encoding/malformation the tests exist to exercise.
+test/fixtures
+# npm-generated - reformatting it by hand only produces unrelated diff noise; npm rewrites
+# it in its own style on every install regardless of what prettier thinks it should look like.
+package-lock.json

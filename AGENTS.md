@@ -95,38 +95,38 @@ every request made while building this (listing pages, the alternate
   **comments** (e.g. `http://172.16.0.33/obras_publicas/ ó ...`), which
   never reach parsed field values. So explicit ISO-8859-1 decoding turned
   out to matter less in practice than the audit notes' framing implied -
-  but it is still the only *correct* way to handle this server, it costs
+  but it is still the only _correct_ way to handle this server, it costs
   nothing, and it protects against the one raw-byte field the next scrape
   might hit that this sample run didn't.
 - `src/parsers/listing.ts` - `parseListingPage(html, pageUrl)`:
-  - `numTotal` from the always-present `<input name="num_total" ...>`
-    hidden field (confirmed present and correct even on empty/
-    out-of-range pages).
-  - Tender identity + doc order from `div.modal[id^="myModal"]`
-    (`id="myModal{idCompra}"` - reliable, 1:1 with real tender count on
-    every page sampled, including the 1-item and 3-item partial last
-    pages of estado 1 and estado 3).
-  - Card fields via `groupCardFields`: a flat, in-order scan of every
-    `[id="fondo_gris"]` label element (NOT a nested-table walk - see point
-    1 above), paired with modal index by position. A hard structural
-    mismatch (different tender count between modals and card groups)
-    throws rather than silently mispairing records - see the "fail
-    loudly" reasoning in the Known limitations section.
-  - Modal-only fields (`numeroConvocatoria`, `autorizadoPor`,
-    `presupuestoOficial`, `garantiaOfertaExigida`, `lugarApertura`,
-    `informesAdquisicionPliegos`, `objetoLibre`, `renglones[]`,
-    `pliegoPdfUrl`) via label-text regex matching against each 2-`<td>`
-    row of the modal's `table[width="400"]` (never by row position - the
-    site conditionally omits some rows, e.g. `Presupuesto oficial` or
-    `Garantia de oferta exigida` are only present for some tenders, which
-    shifts every row after them; position-based extraction would have
-    silently mislabeled fields on those tenders).
-  - `pliegoPdfUrl` resolved with `new URL(href, pageUrl)` - the site's own
-    relative href (`../aplicacion/a_pdf/X.pdf`) resolves correctly per
-    the WHATWG URL spec even though it walks `..` past what looks like
-    root, because the page itself lives at
-    `/ver_llamados_compras_avanzado.php` (one path segment deep). Verified
-    live: the resolved URL returns a real `Content-Type: application/pdf`.
+    - `numTotal` from the always-present `<input name="num_total" ...>`
+      hidden field (confirmed present and correct even on empty/
+      out-of-range pages).
+    - Tender identity + doc order from `div.modal[id^="myModal"]`
+      (`id="myModal{idCompra}"` - reliable, 1:1 with real tender count on
+      every page sampled, including the 1-item and 3-item partial last
+      pages of estado 1 and estado 3).
+    - Card fields via `groupCardFields`: a flat, in-order scan of every
+      `[id="fondo_gris"]` label element (NOT a nested-table walk - see point
+      1 above), paired with modal index by position. A hard structural
+      mismatch (different tender count between modals and card groups)
+      throws rather than silently mispairing records - see the "fail
+      loudly" reasoning in the Known limitations section.
+    - Modal-only fields (`numeroConvocatoria`, `autorizadoPor`,
+      `presupuestoOficial`, `garantiaOfertaExigida`, `lugarApertura`,
+      `informesAdquisicionPliegos`, `objetoLibre`, `renglones[]`,
+      `pliegoPdfUrl`) via label-text regex matching against each 2-`<td>`
+      row of the modal's `table[width="400"]` (never by row position - the
+      site conditionally omits some rows, e.g. `Presupuesto oficial` or
+      `Garantia de oferta exigida` are only present for some tenders, which
+      shifts every row after them; position-based extraction would have
+      silently mislabeled fields on those tenders).
+    - `pliegoPdfUrl` resolved with `new URL(href, pageUrl)` - the site's own
+      relative href (`../aplicacion/a_pdf/X.pdf`) resolves correctly per
+      the WHATWG URL spec even though it walks `..` past what looks like
+      root, because the page itself lives at
+      `/ver_llamados_compras_avanzado.php` (one path segment deep). Verified
+      live: the resolved URL returns a real `Content-Type: application/pdf`.
 - `src/fetchListing.ts` - `fetchTenders(estados, maxItems)`: for each
   selected `estado_compra`, fetches page 1, computes
   `totalPages = ceil(numTotal / 5)` (5 tenders/page confirmed on every
@@ -139,6 +139,176 @@ every request made while building this (listing pages, the alternate
 - `src/main.ts` - standard `Actor.init()/run()/exit()`, charges
   `RESULT_EVENT_NAME='result'` once per pushed item, stops on
   `eventChargeLimitReached`.
+
+## Delta engine retrofit (2026-09-06)
+
+Added `onlyNew`/`dateRange` input, a per-estado seen-id store, and a
+standardized 5-field output envelope, matching the shape shipped and
+cloud-verified on the fleet's UK HSE Enforcement Monitor actor - except
+for the pagination-strategy deviation documented below, which this
+actor's own live behavior genuinely required.
+
+**Files touched**: `src/types.ts` (additive: `DateRange`,
+`onlyNew`/`dateRange` on `ActorInput`, `DeltaEnvelopeFields`,
+`TenderOutputRecord`), `src/main.ts` (orchestration), plus four new
+modules: `src/state.ts`, `src/dateFilter.ts`, `src/envelope.ts`,
+`src/delta.ts`. **Not touched at all**: `src/http.ts`,
+`src/parsers/listing.ts`, `src/fetchListing.ts` - the entire existing
+fetch/decode/parse/paginate pipeline is untouched, byte for byte, so
+`test/fetchListing.test.ts` and `test/parsers/listing.test.ts` needed no
+changes and still exercise exactly the code they always did. This also
+means the delta filters cannot affect the encoding path or the pagination
+mechanics at all, by construction, not just by care.
+
+### Why a POST-FILTER, not early-stop pagination - live evidence
+
+The generic delta-engine contract prefers early-stop (stop paginating
+after N pages with zero unseen ids) when the source is reliably
+newest-first. Before assuming that, this portal's live pagination order
+was checked directly (2026-09-06), and it is **not** newest-first at all
+
+- it is sorted by each tender's own **opening-date field**, which tracks
+  nothing about when the tender was added to the site:
+
+```
+estado_compra=1 (apertura proxima) - modal ids in page order, then that
+page's own fechaAperturaSobres values:
+  page 1: ids 8900,8891,8873,8858,8848  -> dates all 07/09/2026
+  page 2: ids 8831,8830,8897,8850,8907  -> dates 07/09 through 09/09/2026
+  page 3: ids 8903,8902,8834,8920,8919  -> dates 09/09 through 10/09/2026
+```
+
+Page 3 contains id `8920` - higher (almost certainly _more recently
+created_) than anything on page 1 or 2. The site is sorting by **ascending
+scheduled opening date** (soonest-opening tender first), not by insertion
+order. A brand-new tender added today with an opening date three weeks
+out would land on a page far past where early-stop would have already
+given up - early-stop would silently miss it. Confirmed the same
+phenomenon in the opposite direction on `estado_compra=3` (adjudicadas):
+page 1 covers 24/10/2023 down to 09/11/2022, page 2 continues
+01/11/2022 down to 06/07/2022 - **descending** opening date, again
+nothing to do with discovery order. Both estados currently have zero
+stall-guard/dedup logic in `fetchListing.ts`, which by itself was already
+a mild hint this hadn't been relied upon - this live check made it
+certain. Given this, `onlyNew` is implemented as the spec's documented
+safe fallback: `fetchTenders()` (unchanged) still fetches up to `maxItems`
+exactly as before, and `src/delta.ts` filters the result afterward. A
+correct, honestly-scoped post-filter beats a fast but wrong early-stop.
+
+### record_id / event_type
+
+- `record_id` reuses `idCompra` verbatim (already the site's own unique
+  tender id) - no hashing, per spec.
+- `event_type` defaults to `NEW_LISTING` for every record, always. Unlike
+  HSE's convictions (where "a conviction record IS an imposed sanction"
+  justified `SANCTION`), nothing about a Tucuman listing intrinsically
+  signals a more specific event without real field-level diffing between
+  runs - explicitly out of scope for this pass. One consequence worth
+  naming directly: a tender that transitions from estado 1 to estado 3
+  between runs is reported again as a fresh `NEW_LISTING` (with
+  `is_new: true`) under estado 3, rather than as some invented "AWARDED"
+  transition event this pass cannot actually back with diffing. That is
+  a deliberate, disclosed limitation, not an oversight.
+
+### State design: keyed per estado_compra, not one global seen-set
+
+The seen-id store (`src/state.ts`, KV store name
+`tucuman-compras-monitor-delta-state`) tracks `{ seenIds, lastRunAt }`
+**per `estado_compra`**, mirroring HSE's convictions/notices split, rather
+than one flat set of ids across the whole actor. Reasoning: the same
+`idCompra` legitimately reappears under a different `estado_compra` as a
+tender progresses through its real lifecycle (1 -> 2 -> 3). A global seen
+set would treat "id already seen under estado 1" as reason to hide it
+forever once it shows up later under estado 3 - exactly the case a B2B
+monitoring consumer cares about most (a tender has now actually been
+awarded). Scoping the seen-set per estado means a tender's first
+appearance in EACH estado is correctly flagged `is_new: true`.
+
+A second, related decision: `main.ts` marks an id "seen" only once it is
+actually **pushed** to the dataset this run - not merely fetched. If
+`dateRange` (or the per-run charge limit) excludes a genuinely new tender
+from this run's output, it is deliberately left un-marked, so a later run
+without that exclusion still reports it as new rather than silently
+losing it. `is_new` itself is still computed for every fetched tender
+regardless of what gets filtered out, per spec, so a plain non-delta run
+always shows accurate `is_new` values.
+
+`mergeSeenIds` caps each estado's array at `MAX_SEEN_IDS_PER_ESTADO`
+(3000). Since the source's own order can't be trusted as "oldest last"
+(see above), the cap evicts by **observation recency** instead - this
+run's newly-pushed ids go to the front, so if the cap is hit, the ids
+dropped are whichever this scraper itself has gone longest without
+re-observing. That is a real, disclosed deviation from "newest ids
+first, since the source is newest-first" in the generic contract, made
+necessary by the same finding as the pagination-strategy deviation above.
+
+### source_url: there is no real per-record detail URL to reuse
+
+Per point 2 above, the only per-tender detail link this site ever had
+(`detalle_llamado.php?id_compra=N`) is dead - commented out of the live
+HTML. There is nothing named `detailUrl` to rename. The closest
+`listingPageUrl` field only pointed at a _page_ (up to 5 tenders), not
+this specific record. `source_url` is built as
+`` `${listingPageUrl}#myModal${idCompra}` `` - a real, fetchable URL (the
+fragment is inert on plain fetch, so this still resolves to exactly the
+page the data came from) that additionally disambiguates which of the
+page's ~5 tenders this record is, via the same DOM id
+(`#myModal{idCompra}`) the parser itself already keys off. `scrapedAt`/
+`listingPageUrl` are dropped from the final pushed object (replaced, not
+duplicated) - `src/envelope.ts` builds the actual output shape from a
+`TenderRecord`.
+
+### dateRange: which "natural date field", and a real estado-1 gotcha
+
+This source publishes exactly one per-tender date that varies
+consistently across all three estados: `fechaAperturaSobres` (the bid
+opening date/time - present via a single `/sobres/i` label match across
+both the estado-1/2 phrasing and estado 3's past-tense phrasing, see
+point 3 above). `fechaAdjudicacion` was considered and rejected as the
+primary field - it is `null` for the large majority of tenders (only
+populated for awarded ones).
+
+Real gotcha, found by checking live data rather than assuming: for
+`estado_compra=1` ("apertura proxima" - upcoming opening), every sampled
+`fechaAperturaSobres` was **in the future** relative to the run (by
+definition - these tenders haven't opened yet). `dateRange`'s window is
+implemented as the standard backward-looking "in the last N" (matching
+the generic contract's shape), so it will **never** match an estado-1
+tender - not a bug, but exactly the kind of "field can be misleading"
+case the HSE Offence-Date precedent calls for disclosing plainly rather
+than shipping quietly. `estado_compra=2`/`3` do not have this problem:
+by the time a tender is "en adjudicacion" or "adjudicada", its own bid
+opening has already happened, so `fechaAperturaSobres` there is a real
+past date and `dateRange` filters meaningfully. Documented in
+`README.md` "Delta mode" and in the input schema's own description.
+`src/dateFilter.ts` parses the site's own `"DD/MM/YYYY[, HH:MM:SS]"`
+format directly (no ISO date strings exist on this source) and returns
+`null` (excluded from any dateRange-filtered output, never thrown) for
+anything that doesn't match.
+
+### Known limitation carried over from this pass
+
+Same as the README: no field-level diffing/UPDATE detection - `event_type`
+is always `NEW_LISTING`, and an estado transition (e.g. awarded since last
+run) is not reported as a distinct event type, only as a fresh `is_new`
+under its new estado. Flagged here as a real gap a future pass could
+close, not hidden.
+
+### A real gotcha hit while doing this: prettier vs. this repo's own fixtures
+
+`npm run format:check` was **already failing** on the pre-existing
+`test/fixtures/*.html` files before this retrofit touched anything
+(confirmed by stashing this change and re-running it against the bare
+`65edf2a` commit) - prettier's HTML parser cannot parse the site's own
+malformed markup (unclosed `<b>`/`<div>` tags) that these fixtures
+deliberately preserve byte-for-byte from the live portal. Fixed by adding
+`test/fixtures` to `.prettierignore` (these are captured snapshots, never
+meant to be reformatted) rather than "fixing" the fixtures' intentional
+malformation. Also excluded `package-lock.json` from prettier's scope
+after a first `format --write` pass rewrote ~15k lines of it to a
+different (but functionally identical) style with no relation to this
+work - npm regenerates that file in its own format regardless, so hand
+"correcting" it is pure diff noise, not a real fix.
 
 ## A real source-data quality issue found while sanity-checking the local run
 
@@ -158,9 +328,9 @@ than "fixed" by guessing what the missing text might have said.
 ## Known limitations (disclosed, not hidden)
 
 - **No dedicated `fetchDetail` input toggle**, unlike some sibling actors
-  - there is nothing to toggle, because there is no separate detail
-    request to skip (see point 2 above). One request per 5 tenders,
-    always.
+    - there is nothing to toggle, because there is no separate detail
+      request to skip (see point 2 above). One request per 5 tenders,
+      always.
 - **`estado_compra=2` (en adjudicacion) has a very large backlog** -
   `num_total=3707` live (vs. 31 for estado 1 and 313 for estado 3), i.e.
   742 pages of 5. `maxItems` defaults to 100 for exactly this reason -

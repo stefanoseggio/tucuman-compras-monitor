@@ -27,6 +27,20 @@
             "description": "Hard cap on the number of tenders returned this run, across all selected states. The portal lists only 5 tenders per page, so a high value across multiple states means many sequential requests - estado 2 alone has 3700+ historical records. Start small.",
             "default": 100,
             "minimum": 1
+        },
+        "onlyNew": {
+            "title": "Only new (delta mode)",
+            "type": "boolean",
+            "description": "Delta mode for recurring/scheduled monitoring: returns only tenders whose idCompra was not already returned by a previous run of this actor. Seen ids are tracked per estado_compra in this actor's own named key-value store (tucuman-compras-monitor-delta-state), so they survive between scheduled runs - unlike the run's default key-value store, which is created fresh per run. Implemented as a POST-FILTER: this actor still fetches up to maxItems as usual and only then drops already-seen ids, rather than stopping pagination early once N pages come back with nothing new. Early-stop is NOT used here because this portal's own listing order was verified live (2026-09-06) to be sorted by each tender's own opening-date field - ascending for estado 1, descending for estado 3 - not by when the tender was added to the site, so a later page can hold a genuinely new tender while an earlier page is full of ones already seen. See AGENTS.md for the page-by-page evidence.",
+            "default": false
+        },
+        "dateRange": {
+            "title": "Date range filter",
+            "type": "string",
+            "description": "Filters results to tenders whose fechaAperturaSobres (bid-opening date - the only per-tender date this source publishes) falls within the last 24 hours / 7 days / 30 days. Independent of onlyNew - combine both for 'new to me AND recently opened'. Gotcha: for estado 1 (apertura proxima) this date is always in the FUTURE, since the opening has not happened yet, so it can never fall inside this backward-looking window - dateRange only has a real effect on estado 2/3 tenders, whose opening has already occurred. See README.md 'Delta mode'.",
+            "editor": "select",
+            "enum": ["24h", "7d", "30d"],
+            "enumTitles": ["Last 24 hours", "Last 7 days", "Last 30 days"]
         }
     }
 }
