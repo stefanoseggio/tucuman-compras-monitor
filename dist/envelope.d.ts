@@ -1,5 +1,4 @@
 import type { EstadoCompra, EventType, TenderOutputRecord, TenderRecord } from './types.js';
-
 /**
  * Builds the standardized delta-engine envelope for one tender and drops the two fields it
  * replaces (`scrapedAt` -> `scraped_at`, `listingPageUrl` -> `source_url`).
@@ -10,26 +9,11 @@ import type { EstadoCompra, EventType, TenderOutputRecord, TenderRecord } from '
  * own listing page plus its Bootstrap modal's own DOM id as a URL fragment, which at least
  * disambiguates it from the other tenders on the same listing page.
  */
-export function buildOutputRecord(
-    tender: TenderRecord,
-    options: {
-        isNew: boolean;
-        eventType: EventType;
-        previousEstado: EstadoCompra | null;
-        contentHash: string;
-        scrapedAt: string;
-    },
-): TenderOutputRecord {
-    const { scrapedAt: _droppedScrapedAt, listingPageUrl, ...rest } = tender;
-
-    return {
-        ...rest,
-        record_id: tender.idCompra,
-        event_type: options.eventType,
-        scraped_at: options.scrapedAt,
-        is_new: options.isNew,
-        previousEstado: options.previousEstado,
-        contentHash: options.contentHash,
-        source_url: `${listingPageUrl}#myModal${tender.idCompra}`,
-    };
-}
+export declare function buildOutputRecord(tender: TenderRecord, options: {
+    isNew: boolean;
+    eventType: EventType;
+    previousEstado: EstadoCompra | null;
+    contentHash: string;
+    scrapedAt: string;
+}): TenderOutputRecord;
+//# sourceMappingURL=envelope.d.ts.map

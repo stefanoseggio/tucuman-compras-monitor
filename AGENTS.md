@@ -140,6 +140,62 @@ every request made while building this (listing pages, the alternate
   `RESULT_EVENT_NAME='result'` once per pushed item, stops on
   `eventChargeLimitReached`.
 
+## Delta engine v2 (2026-09-08)
+
+Supersedes the "record_id / event_type" and "State design" subsections
+below, which describe the 2026-09-06 v1 delta retrofit - kept in place as
+history, not deleted, since the live evidence they document (pagination
+order, why post-filter not early-stop) is still exactly correct and still
+governs `src/fetchListing.ts`/`src/delta.ts` unchanged.
+
+**What changed**: `event_type` is no longer always `NEW_LISTING`. The v1
+"Known limitation" ("a tender that transitions from estado 1 to estado 3
+between runs is reported again as a fresh NEW_LISTING... rather than some
+invented AWARDED transition event") is now closed:
+
+- `src/state.ts` replaced the per-estado `{ seenIds, lastRunAt }` map with
+  ONE flat, cross-estado map: `idCompra -> { estado, hash }`. This is the
+  real structural change v1 explicitly said would be needed - a per-estado
+  seen-set can tell you an id is new *to that estado*, but cannot itself
+  tell "genuinely new" apart from "just moved here from a different
+  estado", because it never looks at the other estados' seen-sets at all.
+- `src/fingerprint.ts` (new) hashes every field that can change while a
+  tender stays in the same estado - montos, dates, renglones, the modal's
+  full field set - with `sha1(JSON.stringify(...))`. Free to compute: no
+  second HTTP request, since every field is already inline in the one
+  listing fetch this actor has always made (see point 2 above - this is
+  what makes Tucuman's UPDATE detection cheaper than sibling actors that
+  need a separate detail-page re-read).
+- `src/delta.ts`'s `classify()` compares a fetched tender against its
+  stored entry: no entry -> `NEW_LISTING`; entry exists, different estado
+  -> `STATUS_CHANGE` (with `previousEstado` set to the old one); entry
+  exists, same estado, different hash -> `UPDATED`; same estado, same hash
+  -> `UNCHANGED` (only ever delivered when `onlyNew=false` - a full run
+  now genuinely means "everything", not just "everything, but the
+  event_type field is decorative").
+- `is_new` keeps its v1 meaning exactly (`!entry`, i.e. never seen before,
+  under any estado) - it is NOT redefined to mean "something changed"; a
+  `STATUS_CHANGE` record has `is_new=false` (it WAS seen, just elsewhere).
+- New optional `eventTypes` input narrows delivery to a subset of
+  `NEW_LISTING`/`STATUS_CHANGE`/`UPDATED` when `onlyNew=true` - `UNCHANGED`
+  is not in that enum since it is never something a delta-mode consumer
+  asks for, only something a full-mode run can produce.
+- **Pricing**: unlike Australia/UK HSE/Florida/Santa Fe, this actor has no
+  `result`/`result-summary` split. Those sibling actors charge less for a
+  listing-only record because fetching full detail costs a SECOND request
+  their `fetchDetail: false` mode skips. Tucuman never had that second
+  request to skip (see point 2) - every record, always, already has full
+  detail at identical extraction cost. Inventing a cheaper tier here would
+  be pricing theater, not a real cost difference, so every delivered
+  record (`NEW_LISTING`, `STATUS_CHANGE` or `UPDATED`) is charged the same
+  single `result` event. Disclosed in README "How much does it cost".
+- **State shape is NOT migrated**: `loadDeltaState` treats a v1-shaped
+  blob (`{ estados: {...} }`) as absent (`isValidState` returns false) and
+  starts cold rather than attempting a risky in-place reinterpretation. An
+  existing scheduled task's next run re-baselines - every currently-known
+  id is reported once more as whatever it now classifies as, cheap at this
+  register's real size (few thousand ids total).
+
 ## Delta engine retrofit (2026-09-06)
 
 Added `onlyNew`/`dateRange` input, a per-estado seen-id store, and a
@@ -286,13 +342,14 @@ format directly (no ISO date strings exist on this source) and returns
 `null` (excluded from any dateRange-filtered output, never thrown) for
 anything that doesn't match.
 
-### Known limitation carried over from this pass
+### Known limitation carried over from this pass (RESOLVED 2026-09-08)
 
-Same as the README: no field-level diffing/UPDATE detection - `event_type`
-is always `NEW_LISTING`, and an estado transition (e.g. awarded since last
-run) is not reported as a distinct event type, only as a fresh `is_new`
-under its new estado. Flagged here as a real gap a future pass could
-close, not hidden.
+Was: no field-level diffing/UPDATE detection - `event_type` is always
+`NEW_LISTING`, and an estado transition (e.g. awarded since last run) is
+not reported as a distinct event type. Closed by the "Delta engine v2"
+section above (`STATUS_CHANGE` + `UPDATED` via a cross-estado, content-
+fingerprinted state). Kept here, marked resolved rather than deleted, so
+the historical disclosure trail stays intact.
 
 ### A real gotcha hit while doing this: prettier vs. this repo's own fixtures
 
@@ -348,6 +405,8 @@ than "fixed" by guessing what the missing text might have said.
   the real behavior of the source, not a parser gap; it is exposed as-is
   rather than defaulted to an empty string, so consumers can distinguish
   "not awarded yet" from "awarded with no recorded date".
+- ~~No field-level diffing/UPDATE detection between runs~~ RESOLVED
+  2026-09-08 - see "Delta engine v2" above.
 - No pagination safety valve beyond `maxItems` and the 0-items-on-a-page
   stop condition - a user setting a very high `maxItems` against estado 2
   will genuinely issue hundreds of sequential requests. This is

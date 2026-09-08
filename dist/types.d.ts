@@ -1,9 +1,7 @@
 /** `estado_compra` query param on the portal: 1 = upcoming opening, 2 = in adjudication, 3 = awarded. */
 export type EstadoCompra = '1' | '2' | '3';
-
 /** Delta-mode date window, matched against a tender's own fechaAperturaSobres - see delta.ts. */
 export type DateRange = '24h' | '7d' | '30d';
-
 /**
  * NEW_LISTING: id never seen before. STATUS_CHANGE: id seen before, under a DIFFERENT
  * estado_compra (a real lifecycle transition, e.g. 1 -> 3). UPDATED: id seen before, same
@@ -13,7 +11,6 @@ export type DateRange = '24h' | '7d' | '30d';
  * and AGENTS.md "Delta engine v2".
  */
 export type EventType = 'NEW_LISTING' | 'STATUS_CHANGE' | 'UPDATED' | 'UNCHANGED';
-
 export interface ActorInput {
     estados: EstadoCompra[];
     maxItems: number;
@@ -33,13 +30,11 @@ export interface ActorInput {
      */
     dateRange?: DateRange;
 }
-
 /** One line item ("renglon") from a tender's full breakdown table, as published inside its detail modal. */
 export interface RenglonDetalle {
     renglon: string;
     descripcion: string;
 }
-
 /**
  * Fields scraped from a tender's listing "card" (the div.table/fondo_gris block).
  * Present for every tender, on every estado_compra, verified live across 1 (31 items),
@@ -56,7 +51,6 @@ export interface ListingCardFields {
     fechaAperturaSobres: string | null;
     fechaAdjudicacion: string | null;
 }
-
 /**
  * Fields scraped from a tender's own Bootstrap modal (`#myModal{idCompra}`), which is
  * embedded inline in the same listing HTML response - no separate detail request needed.
@@ -72,21 +66,18 @@ export interface ModalDetailFields {
     renglones: RenglonDetalle[];
     pliegoPdfUrl: string | null;
 }
-
-export interface ParsedTender extends ListingCardFields, ModalDetailFields {}
-
+export interface ParsedTender extends ListingCardFields, ModalDetailFields {
+}
 export interface ParsedListingPage {
     numTotal: number;
     items: ParsedTender[];
 }
-
 export interface TenderRecord extends ParsedTender {
     estadoCompra: EstadoCompra;
     estadoCompraLabel: string;
     listingPageUrl: string;
     scrapedAt: string;
 }
-
 /**
  * The 5 standardized delta-engine fields every pushed record carries - see src/envelope.ts.
  * `scraped_at` replaces the per-page `scrapedAt` above and `source_url` replaces
@@ -105,6 +96,6 @@ export interface DeltaEnvelopeFields {
     /** sha1 content fingerprint as of this run - see src/fingerprint.ts. */
     contentHash: string;
 }
-
 /** The actual shape pushed to the dataset: a TenderRecord with the envelope fields applied. */
 export type TenderOutputRecord = Omit<TenderRecord, 'scrapedAt' | 'listingPageUrl'> & DeltaEnvelopeFields;
+//# sourceMappingURL=types.d.ts.map

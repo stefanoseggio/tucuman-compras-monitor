@@ -1,10 +1,5 @@
-import { isWithinDateRange, parseSourceDate } from './dateFilter.js';
-import { buildOutputRecord } from './envelope.js';
-import { fingerprintOf } from './fingerprint.js';
-import type { DeltaState, SeenEntry } from './state.js';
-import { getSeenEntry } from './state.js';
+import type { DeltaState } from './state.js';
 import type { DateRange, EventType, TenderOutputRecord, TenderRecord } from './types.js';
-
 export interface ApplyDeltaParams {
     tenders: TenderRecord[];
     /** Full delta state as of the START of this run (see src/state.ts). */
@@ -17,18 +12,9 @@ export interface ApplyDeltaParams {
     /** Injected "now" so dateRange filtering is deterministic in tests - production passes `new Date()`. */
     now: Date;
 }
-
 export interface ApplyDeltaResult {
     output: TenderOutputRecord[];
 }
-
-function classify(entry: SeenEntry | undefined, tender: TenderRecord, hash: string): EventType {
-    if (!entry) return 'NEW_LISTING';
-    if (entry.estado !== tender.estadoCompra) return 'STATUS_CHANGE';
-    if (entry.hash !== hash) return 'UPDATED';
-    return 'UNCHANGED';
-}
-
 /**
  * Applies both delta-mode filters to a fetched batch of tenders and stamps the standardized
  * output envelope. `onlyNew` is a POST-FILTER, not early-stop pagination - see AGENTS.md for
@@ -46,36 +32,5 @@ function classify(entry: SeenEntry | undefined, tender: TenderRecord, hash: stri
  * pushed to the dataset, so a tender excluded today by dateRange, eventTypes or the charge
  * limit is correctly still reported as changed on a later run that does not exclude it.
  */
-export function applyDelta(params: ApplyDeltaParams): ApplyDeltaResult {
-    const { tenders, state, onlyNew, eventTypes, dateRange, scrapedAt, now } = params;
-    const allowedEventTypes = eventTypes ? new Set<EventType>(eventTypes) : null;
-
-    const output: TenderOutputRecord[] = [];
-
-    for (const tender of tenders) {
-        const entry = getSeenEntry(state, tender.idCompra);
-        const hash = fingerprintOf(tender);
-        const eventType = classify(entry, tender, hash);
-        const isNew = !entry;
-
-        if (onlyNew && eventType === 'UNCHANGED') continue;
-        if (allowedEventTypes && eventType !== 'UNCHANGED' && !allowedEventTypes.has(eventType)) continue;
-
-        if (dateRange) {
-            const date = parseSourceDate(tender.fechaAperturaSobres);
-            if (!date || !isWithinDateRange(date, dateRange, now)) continue;
-        }
-
-        output.push(
-            buildOutputRecord(tender, {
-                isNew,
-                eventType,
-                previousEstado: eventType === 'STATUS_CHANGE' && entry ? entry.estado : null,
-                contentHash: hash,
-                scrapedAt,
-            }),
-        );
-    }
-
-    return { output };
-}
+export declare function applyDelta(params: ApplyDeltaParams): ApplyDeltaResult;
+//# sourceMappingURL=delta.d.ts.map

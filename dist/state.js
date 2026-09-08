@@ -1,76 +1,42 @@
 import { Actor } from 'apify';
-
-import type { EstadoCompra } from './types.js';
-
 // Fixed, unique-to-this-actor named key-value store - deliberately NOT the run's default
 // key-value store (Actor.getInput()'s counterpart, Actor.setValue() with no store name),
 // which is created fresh per run and would not survive between scheduled runs. Using a
 // stable name here is what makes "delta mode" possible at all.
 export const DELTA_STATE_STORE_NAME = 'tucuman-compras-monitor-delta-state';
-
 const STATE_KEY = 'state';
-
 // Estado 2 alone has 3700+ historical records; estado 1 (31) and estado 3 (313) are much
 // smaller. One flat cap across the whole (now cross-estado, see below) register comfortably
 // covers normal week-to-week drift without the state blob growing unbounded.
 export const MAX_SEEN_IDS = 6000;
-
-export interface SeenEntry {
-    /** The estado_compra this id was last observed under - lets a later run tell a real
-     *  status change (1 -> 2 -> 3) apart from a same-estado amendment. */
-    estado: EstadoCompra;
-    /** sha1 content fingerprint (see src/fingerprint.ts) as of the last time this id was pushed. */
-    hash: string;
-}
-
-/**
- * v2: ONE flat map keyed by idCompra, not one seen-set per estado_compra. v1 scoped seen-ids
- * per estado so a tender progressing 1 -> 3 would correctly show is_new=true again under its
- * new estado - but that design cannot itself tell the difference between "this id is
- * genuinely new to estado 3" and "this id just moved here from estado 1", which is exactly
- * what STATUS_CHANGE needs to know. A single cross-estado map with the last-seen estado
- * attached gives both: is_new is still `!seen[id]` (identical meaning to v1), and comparing
- * `seen[id].estado` to the current estado recovers the transition v1 explicitly disclosed as
- * out of scope (see AGENTS.md "Delta engine v2").
- */
-export interface DeltaState {
-    /** Ids in observation-recency order, most-recently-observed first - see mergeSeen. */
-    order: string[];
-    entries: Record<string, SeenEntry>;
-}
-
-function emptyState(): DeltaState {
+function emptyState() {
     return { order: [], entries: {} };
 }
-
-function isValidState(value: unknown): value is DeltaState {
-    if (!value || typeof value !== 'object') return false;
-    const v = value as Partial<DeltaState>;
+function isValidState(value) {
+    if (!value || typeof value !== 'object')
+        return false;
+    const v = value;
     return Array.isArray(v.order) && typeof v.entries === 'object' && v.entries !== null;
 }
-
 // storeName defaults to the fixed production name; tests pass a unique name per run so a
 // "cold start" is guaranteed and independent of whatever local storage a previous run left
 // behind (storage/ is gitignored local-dev emulation, not the real Apify cloud store).
-export async function loadDeltaState(storeName: string = DELTA_STATE_STORE_NAME): Promise<DeltaState> {
+export async function loadDeltaState(storeName = DELTA_STATE_STORE_NAME) {
     const store = await Actor.openKeyValueStore(storeName);
-    const raw = await store.getValue<unknown>(STATE_KEY);
+    const raw = await store.getValue(STATE_KEY);
     // A v1-shaped state ({ estados: {...} }) fails isValidState and is treated as absent -
     // the first v2 run on an existing schedule re-baselines rather than crashing on the old
     // shape. Disclosed in CHANGELOG.md; matches the fleet-wide convention that a state-shape
     // change is not silently made backward compatible.
     return isValidState(raw) ? raw : emptyState();
 }
-
-export async function saveDeltaState(state: DeltaState, storeName: string = DELTA_STATE_STORE_NAME): Promise<void> {
+export async function saveDeltaState(state, storeName = DELTA_STATE_STORE_NAME) {
     const store = await Actor.openKeyValueStore(storeName);
     await store.setValue(STATE_KEY, state);
 }
-
-export function getSeenEntry(state: DeltaState, idCompra: string): SeenEntry | undefined {
+export function getSeenEntry(state, idCompra) {
     return state.entries[idCompra];
 }
-
 /**
  * Merges this run's freshly-observed (id, estado, hash) triples into the state and caps the
  * result by *observation* recency, not by the source's own ordering.
@@ -84,28 +50,26 @@ export function getSeenEntry(state: DeltaState, idCompra: string): SeenEntry | u
  * history, not an assumption about the source's chronology (same reasoning as v1's
  * mergeSeenIds, now applied to one flat map instead of one array per estado).
  */
-export function mergeSeen(
-    state: DeltaState,
-    newlyObserved: { id: string; estado: EstadoCompra; hash: string }[],
-    cap: number = MAX_SEEN_IDS,
-): DeltaState {
-    const entries: Record<string, SeenEntry> = { ...state.entries };
-    for (const { id, estado, hash } of newlyObserved) entries[id] = { estado, hash };
-
-    const order: string[] = [];
-    const added = new Set<string>();
+export function mergeSeen(state, newlyObserved, cap = MAX_SEEN_IDS) {
+    const entries = { ...state.entries };
+    for (const { id, estado, hash } of newlyObserved)
+        entries[id] = { estado, hash };
+    const order = [];
+    const added = new Set();
     for (const id of [...newlyObserved.map((n) => n.id), ...state.order]) {
-        if (added.has(id)) continue;
+        if (added.has(id))
+            continue;
         added.add(id);
         order.push(id);
-        if (order.length >= cap) break;
+        if (order.length >= cap)
+            break;
     }
-
-    const prunedEntries: Record<string, SeenEntry> = {};
+    const prunedEntries = {};
     for (const id of order) {
         const entry = entries[id];
-        if (entry) prunedEntries[id] = entry;
+        if (entry)
+            prunedEntries[id] = entry;
     }
-
     return { order, entries: prunedEntries };
 }
+//# sourceMappingURL=state.js.map

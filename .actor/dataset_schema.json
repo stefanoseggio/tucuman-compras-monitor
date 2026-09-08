@@ -43,7 +43,7 @@
             "event_type": {
                 "title": "Event Type",
                 "type": "string",
-                "description": "NEW_LISTING for every record - see AGENTS.md for why no more specific type is used."
+                "description": "NEW_LISTING (never seen before), STATUS_CHANGE (moved to a different estado_compra since last seen), UPDATED (amended within the same estado) or UNCHANGED (only ever delivered when Only new is off)."
             },
             "scraped_at": {
                 "title": "Scraped At",
@@ -53,7 +53,17 @@
             "is_new": {
                 "title": "Is New",
                 "type": "boolean",
-                "description": "True if this record's id was not already returned by a previous run (computed even when onlyNew=false)."
+                "description": "True if this record's id was not already returned by a previous run at all, under any estado (computed even when onlyNew=false)."
+            },
+            "previousEstado": {
+                "title": "Previous Estado",
+                "type": ["string", "null"],
+                "description": "Set only when event_type=STATUS_CHANGE: the estado_compra this id was last seen under."
+            },
+            "contentHash": {
+                "title": "Content Hash",
+                "type": "string",
+                "description": "sha1 fingerprint of this record's changeable fields as of this run - used to detect UPDATED between runs."
             },
             "source_url": {
                 "title": "Source URL",
@@ -90,6 +100,36 @@
                     { "label": "Estado", "format": "text", "field": "estadoCompraLabel" },
                     { "label": "Nuevo", "format": "text", "field": "is_new" },
                     { "label": "Pliego", "format": "link", "field": "pliegoPdfUrl" }
+                ]
+            }
+        },
+        "changes": {
+            "title": "Status changes & amendments",
+            "transformation": {
+                "fields": [
+                    "idCompra",
+                    "event_type",
+                    "previousEstado",
+                    "estadoCompraLabel",
+                    "reparticion",
+                    "presupuestoOficial",
+                    "fechaAperturaSobres",
+                    "pliegoPdfUrl",
+                    "scraped_at"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "columns": [
+                    { "label": "ID", "format": "text", "field": "idCompra" },
+                    { "label": "Evento", "format": "text", "field": "event_type" },
+                    { "label": "Estado anterior", "format": "text", "field": "previousEstado" },
+                    { "label": "Estado actual", "format": "text", "field": "estadoCompraLabel" },
+                    { "label": "Reparticion", "format": "text", "field": "reparticion" },
+                    { "label": "Presupuesto oficial", "format": "text", "field": "presupuestoOficial" },
+                    { "label": "Apertura", "format": "text", "field": "fechaAperturaSobres" },
+                    { "label": "Pliego", "format": "link", "field": "pliegoPdfUrl" },
+                    { "label": "Detectado", "format": "date", "field": "scraped_at" }
                 ]
             }
         }

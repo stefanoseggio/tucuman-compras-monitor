@@ -31,41 +31,50 @@ function realTender(): TenderRecord {
     };
 }
 
+const BASE_OPTS = { isNew: true, eventType: 'NEW_LISTING' as const, previousEstado: null, contentHash: 'h', scrapedAt: '2026-09-06T00:00:00.000Z' };
+
 describe('buildOutputRecord', () => {
     it('reuses idCompra verbatim as record_id, without hashing', () => {
-        const output = buildOutputRecord(realTender(), { isNew: true, scrapedAt: '2026-09-06T00:00:00.000Z' });
+        const output = buildOutputRecord(realTender(), BASE_OPTS);
         expect(output.record_id).toBe('8898');
         expect(output.idCompra).toBe('8898'); // original field kept too - only scrapedAt/listingPageUrl are replaced
     });
 
-    it('defaults event_type to NEW_LISTING', () => {
-        const output = buildOutputRecord(realTender(), { isNew: true, scrapedAt: '2026-09-06T00:00:00.000Z' });
-        expect(output.event_type).toBe('NEW_LISTING');
+    it('passes event_type, previousEstado and contentHash through exactly as given', () => {
+        const output = buildOutputRecord(realTender(), {
+            ...BASE_OPTS,
+            eventType: 'STATUS_CHANGE',
+            previousEstado: '1',
+            contentHash: 'abc123',
+        });
+        expect(output.event_type).toBe('STATUS_CHANGE');
+        expect(output.previousEstado).toBe('1');
+        expect(output.contentHash).toBe('abc123');
     });
 
     it('stamps the caller-provided scraped_at, not the stale per-page scrapedAt on the input', () => {
-        const output = buildOutputRecord(realTender(), { isNew: false, scrapedAt: '2026-09-06T00:00:00.000Z' });
+        const output = buildOutputRecord(realTender(), { ...BASE_OPTS, isNew: false });
         expect(output.scraped_at).toBe('2026-09-06T00:00:00.000Z');
     });
 
     it('passes is_new through exactly as given, for both true and false', () => {
-        expect(buildOutputRecord(realTender(), { isNew: true, scrapedAt: 'x' }).is_new).toBe(true);
-        expect(buildOutputRecord(realTender(), { isNew: false, scrapedAt: 'x' }).is_new).toBe(false);
+        expect(buildOutputRecord(realTender(), { ...BASE_OPTS, isNew: true }).is_new).toBe(true);
+        expect(buildOutputRecord(realTender(), { ...BASE_OPTS, isNew: false }).is_new).toBe(false);
     });
 
     it("builds source_url from the listing page URL plus this record's own modal id", () => {
-        const output = buildOutputRecord(realTender(), { isNew: true, scrapedAt: 'x' });
+        const output = buildOutputRecord(realTender(), BASE_OPTS);
         expect(output.source_url).toBe(`${PAGE_URL}#myModal8898`);
     });
 
     it('drops the replaced scrapedAt/listingPageUrl fields from the final output', () => {
-        const output = buildOutputRecord(realTender(), { isNew: true, scrapedAt: 'x' });
+        const output = buildOutputRecord(realTender(), BASE_OPTS);
         expect(output).not.toHaveProperty('scrapedAt');
         expect(output).not.toHaveProperty('listingPageUrl');
     });
 
     it('keeps every other original tender field untouched', () => {
-        const output = buildOutputRecord(realTender(), { isNew: true, scrapedAt: 'x' });
+        const output = buildOutputRecord(realTender(), BASE_OPTS);
         expect(output.reparticion).toBe('MINISTERIO DE SEGURIDAD - DEPARTAMENTO GENERAL DE POLICIA');
         expect(output.numeroExpediente).toBe('499/219-T-2026');
         expect(output.estadoCompra).toBe('1');

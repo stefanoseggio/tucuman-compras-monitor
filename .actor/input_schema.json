@@ -31,8 +31,20 @@
         "onlyNew": {
             "title": "Only new (delta mode)",
             "type": "boolean",
-            "description": "Delta mode for recurring/scheduled monitoring: returns only tenders whose idCompra was not already returned by a previous run of this actor. Seen ids are tracked per estado_compra in this actor's own named key-value store (tucuman-compras-monitor-delta-state), so they survive between scheduled runs - unlike the run's default key-value store, which is created fresh per run. Implemented as a POST-FILTER: this actor still fetches up to maxItems as usual and only then drops already-seen ids, rather than stopping pagination early once N pages come back with nothing new. Early-stop is NOT used here because this portal's own listing order was verified live (2026-09-06) to be sorted by each tender's own opening-date field - ascending for estado 1, descending for estado 3 - not by when the tender was added to the site, so a later page can hold a genuinely new tender while an earlier page is full of ones already seen. See AGENTS.md for the page-by-page evidence.",
+            "description": "Delta mode for recurring/scheduled monitoring: returns only tenders that are new, changed to a different estado_compra (a real lifecycle transition, e.g. upcoming -> awarded) or amended (a changed monto, renglon or date) since a previous run. Tracked cross-estado, per idCompra, in this actor's own named key-value store (tucuman-compras-monitor-delta-state), so it survives between scheduled runs - unlike the run's default key-value store, which is created fresh per run. Implemented as a POST-FILTER: this actor still fetches up to maxItems as usual and only then drops unchanged already-seen ids, rather than stopping pagination early once N pages come back with nothing new. Early-stop is NOT used here because this portal's own listing order was verified live (2026-09-06) to be sorted by each tender's own opening-date field - ascending for estado 1, descending for estado 3 - not by when the tender was added to the site, so a later page can hold a genuinely new tender while an earlier page is full of ones already seen. See AGENTS.md for the page-by-page evidence.",
             "default": false
+        },
+        "eventTypes": {
+            "title": "Event types to deliver",
+            "type": "array",
+            "description": "Which kinds of change to deliver when 'Only new' is on (ignored, everything delivered, when it is off). NEW_LISTING = never seen before. STATUS_CHANGE = seen before under a different estado_compra (a real lifecycle transition). UPDATED = seen before, same estado, but a monto, renglon, date or other field changed.",
+            "editor": "select",
+            "items": {
+                "type": "string",
+                "enum": ["NEW_LISTING", "STATUS_CHANGE", "UPDATED"],
+                "enumTitles": ["NEW_LISTING - never seen before", "STATUS_CHANGE - moved to a different estado", "UPDATED - amended within the same estado"]
+            },
+            "default": ["NEW_LISTING", "STATUS_CHANGE", "UPDATED"]
         },
         "dateRange": {
             "title": "Date range filter",

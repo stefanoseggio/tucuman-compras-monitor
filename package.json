@@ -1,6 +1,6 @@
 {
     "name": "tucuman-compras-monitor",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "type": "module",
     "description": "Extracts public tenders from the Province of Tucuman, Argentina's official procurement portal",
     "engines": {
@@ -24,7 +24,7 @@
         "vitest": "^4.1.0"
     },
     "scripts": {
-        "start": "npm run start:dev",
+        "start": "node dist/main.js",
         "start:prod": "node dist/main.js",
         "start:dev": "tsx src/main.ts",
         "build": "tsc",
