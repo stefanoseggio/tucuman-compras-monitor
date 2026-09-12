@@ -1,17 +1,25 @@
 {
-    "$schema": "https://apify.com/schemas/v1/actor.ide.json",
-    "actorSpecification": 1,
-    "name": "tucuman-compras-monitor",
-    "title": "Tucuman Tenders Scraper & Monitor",
-    "description": "Extracts public tenders (licitaciones publicas, privadas, contrataciones directas) from the Province of Tucuman, Argentina's official procurement portal, across upcoming/in-adjudication/awarded states, with direct PDF pliego links.",
-    "version": "2.0",
-    "buildTag": "latest",
-    "minMemoryMbytes": 256,
-    "maxMemoryMbytes": 512,
-    "meta": { "templateId": "ts-crawlee-cheerio", "generatedBy": "Claude Code with Claude Sonnet 5" },
-    "inputSchema": "./input_schema.json",
-    "outputSchema": "./output_schema.json",
-    "storages": { "dataset": "./dataset_schema.json" },
-    "changelog": "../CHANGELOG.md",
-    "dockerfile": "../Dockerfile"
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+  "actorSpecification": 1,
+  "name": "tucuman-compras-monitor",
+  "title": "Tucuman Argentina Licitaciones - Tender Delta API",
+  "description": "Monitors the Province of Tucuman, Argentina's official procurement portal for public tenders - licitaciones publicas, privadas, concursos de precios and contrataciones directas - across upcoming, in-adjudication and awarded stages, with full renglon detail, montos and direct pliego PDF links.",
+  "version": "2.0",
+  "buildTag": "latest",
+  "minMemoryMbytes": 256,
+  "maxMemoryMbytes": 512,
+  "meta": {
+    "templateId": "ts-crawlee-cheerio",
+    "generatedBy": "Claude Code with Claude Sonnet 5"
+  },
+  "inputSchema": "./input_schema.json",
+  "outputSchema": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "changelog": "../CHANGELOG.md",
+  "dockerfile": "../Dockerfile",
+  "categories": [
+    "BUSINESS"
+  ]
 }
