@@ -84,6 +84,47 @@ This fetches up to 50 tenders across the upcoming and in-adjudication stages, an
 | `eventTypes` | array | all three | Which of `NEW_LISTING` / `STATUS_CHANGE` / `UPDATED` to deliver when `onlyNew` is on |
 | `dateRange` | string | _(none)_ | `"24h"` / `"7d"` / `"30d"`, filtered on `fechaAperturaSobres`, independent of `onlyNew` |
 
+## Instant Terminal Run (cURL)
+
+Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/TdJtze8dfyykMj2qA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "maxItems": 50,
+  "onlyNew": true
+}'
+```
+
+## Sample Extracted Dataset (JSON)
+
+One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
+
+```json
+{
+  "idCompra": "TUC-2026-04521",
+  "estadoCompra": "2",
+  "estadoCompraLabel": "En evaluacion",
+  "reparticion": "Ministerio de Salud Publica",
+  "tipoCompra": "Licitacion Publica",
+  "rubro": "Insumos medicos",
+  "numeroExpediente": "E-4521-2026",
+  "numeroConvocatoria": "22/2026",
+  "primerRenglon": "Guantes de latex, caja x 100 unidades",
+  "valorPliego": "0,00",
+  "presupuestoOficial": "3.200.000,00",
+  "fechaAperturaSobres": "22/09/2026 10:00",
+  "record_id": "TUC-2026-04521",
+  "event_type": "STATUS_CHANGE",
+  "scraped_at": "2026-09-15T14:11:47.000Z",
+  "is_new": false,
+  "previousEstado": "1",
+  "contentHash": "9d2a5c8e1f4b7d03a8f1e6c9b2d45071c8e3f6b9",
+  "source_url": "https://comprasenlinea.tucuman.gov.ar/"
+}
+```
+
 ## Pricing (Pay-Per-Event)
 
 | Event | Price | When it's charged |
