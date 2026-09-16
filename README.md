@@ -4,16 +4,16 @@
 
 # Tucuman Argentina Licitaciones — Tender Delta API
 
-**Delta-tracked monitor for the Province of Tucuman's public procurement portal — every licitacion, concurso de precios and contratacion directa, across upcoming, in-adjudication and awarded stages.**
+**Delta-tracked monitor for the Province of Tucuman, Argentina's public procurement portal — every licitacion, concurso de precios and contratacion directa, across upcoming, in-adjudication and awarded stages — runs on your own configured Apify schedule.**
 
 [![Built for Apify](https://img.shields.io/badge/Built%20for-Apify-00C0FF?logo=apify&logoColor=white)](https://apify.com)
-[![Pay-Per-Event](https://img.shields.io/badge/Pay--Per--Event-%240.003%2Ftender-blue)](#pricing-pay-per-event)
+[![Pay-Per-Event](https://img.shields.io/badge/Pay--Per--Event-%240.003%2Ftender-blue)](#cost--byok-disclosure)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](./LICENSE)
 
 [![Run on Apify](https://img.shields.io/badge/Run%20on-Apify%20Store-00C0FF?style=for-the-badge&logo=apify&logoColor=white)](https://apify.com/stefano_seggio/tucuman-compras-monitor)
 
-Owner reference: [Console](https://console.apify.com/actors/TdJtze8dfyykMj2qA) · Actor ID `TdJtze8dfyykMj2qA`
+Live and public at [apify.com/stefano_seggio/tucuman-compras-monitor](https://apify.com/stefano_seggio/tucuman-compras-monitor). Owner reference: [Console](https://console.apify.com/actors/TdJtze8dfyykMj2qA) · Actor ID `TdJtze8dfyykMj2qA`
 
 </div>
 
@@ -25,7 +25,85 @@ Tucuman's provincial procurement portal (`comprasbys.tucuman.gob.ar`) is the pri
 
 This actor fetches full multi-renglon detail for every tender — buying organism, rubro, montos, opening date, pliego PDF — from all three lifecycle stages in one pass, and its delta engine tracks each `idCompra` across stages so a scheduled run reports only what is genuinely new, has moved to a new stage (`STATUS_CHANGE`), or was amended in place (`UPDATED`). Everything needed to act on a tender — including the direct pliego PDF link — ships inline in the same record; there is no separate detail-page fetch on this source, so nothing is missed and nothing costs extra to enrich.
 
-It runs as a standard Apify Actor with Pay-Per-Event pricing: you pay only for the tenders actually delivered to your dataset, on top of a fixed per-run start fee — nothing for pages fetched, ids tracked, or runs that turn up no changes.
+It runs as a standard Apify Actor on your own configured Apify Scheduler — there is no fixed operator-side cadence — with Pay-Per-Event pricing: you pay only for the tenders actually delivered to your dataset, on top of a fixed per-run start fee — nothing for pages fetched, ids tracked, or runs that turn up no changes.
+
+## Cost & BYOK Disclosure
+
+| Event | Price | Charged when |
+| --- | --- | --- |
+| `result` | **$0.003** | Once per tender delivered to your dataset |
+| Actor start | fixed per-run fee | Once per run, regardless of how many tenders are delivered |
+
+Every delivered record already carries full modal-level detail — renglones, montos, garantia, pliego link — at identical extraction cost, so there is no separate cheaper "listing-only" tier: the table above is the full price list. A tender's `contentHash` (SHA-1, computed over every changeable field) is recomputed on each run; when it matches the hash stored from the last run the tender is classified `UNCHANGED` and is suppressed before delivery — it is **never billed**. You pay only for tenders this actor actually delivers on a given run; a scheduled `onlyNew` run that finds nothing new or changed costs nothing beyond the fixed per-run start fee.
+
+> **Note on the figure above:** Delta Registry's fleet-wide pricing index currently carries a `$0` placeholder for this Actor pending independent re-verification of that page against the live Store listing; the `$0.003/result` figure here is this Actor's own real, current Pay-Per-Event price and is the authoritative one.
+
+**No third-party API key required.** BYOK status: **none**. This Actor calls only Tucuman's own public procurement portal — there is no paid third-party API in the pipeline, and no key of any kind for you to supply.
+
+## Quickstart
+
+Get an API token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations). All three examples below run the real, public Actor (`stefano_seggio/tucuman-compras-monitor`, Actor ID `TdJtze8dfyykMj2qA` — either identifier works).
+
+### cURL (instant, synchronous)
+
+Runs synchronously and returns the resulting dataset items directly in the response — no polling needed.
+
+```bash
+curl -X POST "https://api.apify.com/v2/acts/TdJtze8dfyykMj2qA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "maxItems": 50,
+  "onlyNew": true
+}'
+```
+
+### Python (`apify_client`)
+
+```python
+# run_monitor.py
+# Runs the Tucuman Compras Monitor actor and prints delivered tender records.
+import os
+from apify_client import ApifyClient
+
+client = ApifyClient(os.environ["APIFY_TOKEN"])
+
+run_input = {
+    "estados": ["1", "2"],
+    "maxItems": 50,
+    "onlyNew": True,
+    "eventTypes": ["NEW_LISTING", "STATUS_CHANGE", "UPDATED"],
+}
+
+run = client.actor("stefano_seggio/tucuman-compras-monitor").call(run_input=run_input)
+
+dataset_items = client.dataset(run["defaultDatasetId"]).list_items().items
+for item in dataset_items:
+    print(f"- [{item['event_type']}] {item['idCompra']} | {item['reparticion']} | {item['tipoCompra']}")
+```
+
+### Node.js (`apify-client`)
+
+```javascript
+import { ApifyClient } from 'apify-client';
+
+const client = new ApifyClient({ token: process.env.APIFY_TOKEN });
+
+const input = {
+  estados: ['1', '2'],
+  maxItems: 50,
+  onlyNew: true,
+  eventTypes: ['NEW_LISTING', 'STATUS_CHANGE', 'UPDATED'],
+};
+
+const run = await client.actor('stefano_seggio/tucuman-compras-monitor').call(input);
+const { items } = await client.dataset(run.defaultDatasetId).listItems();
+
+for (const item of items) {
+  console.log(`- [${item.event_type}] ${item.idCompra} | ${item.reparticion} | ${item.tipoCompra}`);
+}
+```
+
+Full, runnable copies of the Node.js and Python examples above live in this repo under [`examples/`](examples) (`run-monitor.js`, `run_monitor.py`).
 
 ## Architecture
 
@@ -61,20 +139,11 @@ flowchart TD
 | Correct charset decoding | The portal serves `ISO-8859-1` but Node's native `fetch().text()` always assumes UTF-8; this actor reads raw bytes and decodes explicitly to avoid mangled accented text |
 | Fail-loud structural extraction | Throws if the number of tender modals doesn't match the number of parsed field-groups on a page, rather than silently mispairing one tender's fields with another's |
 
-## Quick start
+## Input & Output Schema
 
-```bash
-apify call tucuman-compras-monitor --input '{
-  "estados": ["1", "2"],
-  "maxItems": 50,
-  "onlyNew": true,
-  "eventTypes": ["NEW_LISTING", "STATUS_CHANGE", "UPDATED"]
-}'
-```
+### Input
 
-This fetches up to 50 tenders across the upcoming and in-adjudication stages, and — because `onlyNew` is on — delivers only tenders that are new, moved to a different estado, or amended since your last run.
-
-## Input
+Fields as defined in [`.actor/input_schema.json`](.actor/input_schema.json):
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -84,20 +153,7 @@ This fetches up to 50 tenders across the upcoming and in-adjudication stages, an
 | `eventTypes` | array | all three | Which of `NEW_LISTING` / `STATUS_CHANGE` / `UPDATED` to deliver when `onlyNew` is on |
 | `dateRange` | string | _(none)_ | `"24h"` / `"7d"` / `"30d"`, filtered on `fechaAperturaSobres`, independent of `onlyNew` |
 
-## Instant Terminal Run (cURL)
-
-Runs synchronously and returns the resulting dataset items directly in the response - no polling needed. Get your token from [console.apify.com/settings/integrations](https://console.apify.com/settings/integrations).
-
-```bash
-curl -X POST "https://api.apify.com/v2/acts/TdJtze8dfyykMj2qA/run-sync-get-dataset-items?token=<YOUR_API_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-  "maxItems": 50,
-  "onlyNew": true
-}'
-```
-
-## Sample Extracted Dataset (JSON)
+### Output
 
 One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
 
@@ -125,13 +181,25 @@ One real record from this Actor's own dataset, matching `.actor/dataset_schema.j
 }
 ```
 
-## Pricing (Pay-Per-Event)
-
-| Event | Price | When it's charged |
-| --- | --- | --- |
-| `result` | **$0.003** | Once per tender delivered to your dataset |
-
-Every delivered record already carries full modal-level detail — renglones, montos, garantia, pliego link — at identical extraction cost, so there is no separate cheaper "listing-only" tier: what you see in the output above is the full price list. You pay only for tenders this actor actually delivers on a given run; a scheduled `onlyNew` run that finds nothing new or changed costs nothing beyond the actor's fixed per-run start fee.
+| Field | Description |
+| --- | --- |
+| `idCompra` | The portal's own unique tender identifier — the key this Actor's delta engine tracks across estados. |
+| `estadoCompra` / `estadoCompraLabel` | Current lifecycle stage code and its human-readable label. |
+| `reparticion` | The buying government organism/ministry. |
+| `tipoCompra` | Procurement type (Licitacion Publica, Licitacion Privada, Concurso de Precios, Contratacion Directa). |
+| `rubro` | Category/industry of the tender. |
+| `numeroExpediente` / `numeroConvocatoria` | The portal's own file/expediente and convocatoria numbers. |
+| `primerRenglon` | The first line-item description. |
+| `valorPliego` | Price of the bidding document (pliego), as published. |
+| `presupuestoOficial` | Official budget for the tender, as published. |
+| `fechaAperturaSobres` | Bid-opening date/time. |
+| `record_id` | Stable identifier for this record (mirrors `idCompra`). |
+| `event_type` | `NEW_LISTING`, `STATUS_CHANGE`, `UPDATED`, or `UNCHANGED`. |
+| `scraped_at` | UTC timestamp this record was captured. |
+| `is_new` | `true` on a tender's first-ever appearance in the dataset. |
+| `previousEstado` | Populated only on `STATUS_CHANGE` — the estado this tender was in last time it was seen. |
+| `contentHash` | SHA-1 fingerprint over every changeable field, used to detect `UPDATED` amendments. |
+| `source_url` | The Tucuman procurement portal's base URL. |
 
 ## Why not just scrape it yourself
 
@@ -147,13 +215,27 @@ Every delivered record already carries full modal-level detail — renglones, mo
 - **No migration from the v1 delta state.** Upgrading a scheduled task from the v1 per-estado tracking to the current cross-estado engine re-baselines on its first run rather than migrating old state, since the two shapes cannot be reconciled.
 - **No contractual enterprise SLA.** This is an independently developed and maintained actor, not a vendor-backed enterprise product; there is no guaranteed uptime commitment attached to it today.
 
+## Contributing & Local Setup
+
+The real, buildable TypeScript source for this Actor **is** checked into this repository (`src/`, `test/`, `package.json`) — this is not a thin documentation wrapper. To run it locally:
+
+```bash
+git clone https://github.com/stefanoseggio/tucuman-compras-monitor.git
+cd tucuman-compras-monitor
+npm install
+apify login          # paste your Apify API token
+apify run             # runs the Actor locally against src/main.ts, using .actor/input_schema.json defaults
+```
+
+`npm test` runs the test suite under `test/`. `npx tsc --noEmit` type-checks the project against `tsconfig.json`. Local runs still hit the real, live Tucuman government portal — there is no bundled fixture/mock server — so be considerate with `maxItems` while developing. Bug reports and pull requests against `src/` are welcome via GitHub issues/PRs on this repository; behavioral changes are also reflected in the Actor's Store listing on the next `apify push`.
+
 ## Node.js example
 
-See [`run-monitor.js`](#nodejs) below — authenticates via `APIFY_TOKEN`, calls the actor, and prints each delivered tender.
+See [`run-monitor.js`](examples/run-monitor.js) — authenticates via `APIFY_TOKEN`, calls the actor, and prints each delivered tender.
 
 ## Python example
 
-See [`run_monitor.py`](#python) below — same call pattern using the `apify-client` PyPI package.
+See [`run_monitor.py`](examples/run_monitor.py) — same call pattern using the `apify-client` PyPI package.
 
 ---
 
