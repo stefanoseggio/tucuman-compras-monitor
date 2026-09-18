@@ -208,29 +208,42 @@ Fields as defined in [`.actor/input_schema.json`](.actor/input_schema.json):
 
 ### Output
 
-One real record from this Actor's own dataset, matching `.actor/dataset_schema.json` (trimmed for length — see the full field table below for the 8 additional fields, e.g. `renglones`, `pliegoPdfUrl`, not shown in this particular record):
+One real record from this Actor's own dataset, matching `.actor/dataset_schema.json` (live-verified against the actual Apify Store listing on 2026-09-18):
 
 ```json
 {
-  "idCompra": "TUC-2026-04521",
-  "estadoCompra": "2",
-  "estadoCompraLabel": "En evaluacion",
-  "reparticion": "Ministerio de Salud Publica",
-  "tipoCompra": "Licitacion Publica",
-  "rubro": "Insumos medicos",
-  "numeroExpediente": "E-4521-2026",
-  "numeroConvocatoria": "22/2026",
-  "primerRenglon": "Guantes de latex, caja x 100 unidades",
-  "valorPliego": "0,00",
-  "presupuestoOficial": "3.200.000,00",
-  "fechaAperturaSobres": "22/09/2026 10:00",
-  "record_id": "TUC-2026-04521",
-  "event_type": "STATUS_CHANGE",
-  "scraped_at": "2026-09-15T14:11:47.000Z",
-  "is_new": false,
-  "previousEstado": "1",
-  "contentHash": "9d2a5c8e1f4b7d03a8f1e6c9b2d45071c8e3f6b9",
-  "source_url": "https://comprasenlinea.tucuman.gov.ar/"
+  "idCompra": "8902",
+  "reparticion": "MINISTERIO DE SEGURIDAD - DEPARTAMENTO GENERAL DE POLICIA",
+  "tipoCompra": "CONCURSO DE PRECIOS",
+  "valorPliego": "Gratuito",
+  "numeroExpediente": "3651/208-ADM-2026",
+  "rubro": "UTILES DE OFICINA",
+  "primerRenglon": "utiles de oficina listado en solicitud de compra obrante en archivo adjunto",
+  "fechaAperturaSobres": "09/09/2026, 12:10:00",
+  "fechaAdjudicacion": null,
+  "numeroConvocatoria": "CONCURSO DE PRECIOS Nº 281-2026",
+  "autorizadoPor": null,
+  "presupuestoOficial": null,
+  "garantiaOfertaExigida": null,
+  "lugarApertura": "Direccion de Administración - Oficina Compras y Contrataciones - Calle Italia N° 2601",
+  "informesAdquisicionPliegos": "Direccion de Administración - Sección Compras y Contrataciones -Calle Italia N° 2601 hasta fecha 08/09/2026 a horas 13:00",
+  "objetoLibre": null,
+  "renglones": [
+    {
+      "renglon": "1",
+      "descripcion": "1 unidad de utiles de oficina listado en solicitud de compra obrante en archivo adjunto -Rubro: UTILES DE OFICINA"
+    }
+  ],
+  "pliegoPdfUrl": "https://comprasbys.tucuman.gob.ar/aplicacion/a_pdf/Licitacion8902.pdf",
+  "estadoCompra": "1",
+  "estadoCompraLabel": "Apertura proxima",
+  "record_id": "8902",
+  "event_type": "NEW_LISTING",
+  "scraped_at": "2026-09-04T21:27:58.988Z",
+  "is_new": true,
+  "previousEstado": null,
+  "contentHash": "9785babab5db93ae71cfb9c3c49e96bca7fdc99e",
+  "source_url": "https://comprasbys.tucuman.gob.ar/ver_llamados_compras_avanzado.php?n=1&pagina_actual=3&estado_compra=1#myModal8902"
 }
 ```
 
@@ -260,7 +273,7 @@ One real record from this Actor's own dataset, matching `.actor/dataset_schema.j
 | `is_new` | `true` on a tender's first-ever appearance in the dataset. |
 | `previousEstado` | Populated only on `STATUS_CHANGE` — the estado this tender was in last time it was seen. |
 | `contentHash` | SHA-1 fingerprint over every changeable field, used to detect `UPDATED` amendments. |
-| `source_url` | The Tucuman procurement portal's base URL. |
+| `source_url` | The listing page this record was read from, with a fragment identifying its own modal (`#myModal<idCompra>`). |
 
 ## Why not just scrape it yourself
 

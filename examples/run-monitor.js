@@ -1,6 +1,6 @@
 // run-monitor.js
 // Runs the Tucuman Compras Monitor actor and logs delivered tender records.
-const { ApifyClient } = require('apify-client');
+import { ApifyClient } from 'apify-client';
 
 // Authenticate using a token from the environment (never hardcode it).
 const client = new ApifyClient({
