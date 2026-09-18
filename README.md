@@ -1,5 +1,3 @@
-# Tucuman Compras Monitor
-
 <div align="center">
 
 # Tucuman Argentina Licitaciones — Tender Delta API
@@ -139,6 +137,61 @@ flowchart TD
 | Correct charset decoding | The portal serves `ISO-8859-1` but Node's native `fetch().text()` always assumes UTF-8; this actor reads raw bytes and decodes explicitly to avoid mangled accented text |
 | Fail-loud structural extraction | Throws if the number of tender modals doesn't match the number of parsed field-groups on a page, rather than silently mispairing one tender's fields with another's |
 
+## Use this from Claude Desktop, Cursor, or Windsurf (via MCP)
+
+This Actor is also reachable as an MCP tool through Apify's own hosted `@apify/actors-mcp-server`, scoped to just this one Actor via a `?tools=` query string — not the full fleet. Get a token from [Apify Console → Settings → Integrations](https://console.apify.com/settings/integrations) first.
+
+**Claude Desktop** (`%APPDATA%\Claude\claude_desktop_config.json` on Windows, `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS) — uses the `mcp-remote` stdio bridge. Note: `mcp-remote` does not expand shell environment variables inside the JSON string, so paste the literal token in place of `${APIFY_TOKEN}` below, and keep this file out of version control.
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-tucuman-compras-monitor": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.apify.com/?tools=stefano_seggio/tucuman-compras-monitor",
+        "--header",
+        "Authorization: Bearer ${APIFY_TOKEN}"
+      ]
+    }
+  }
+}
+```
+
+**Cursor** (`.cursor/mcp.json` or `~/.cursor/mcp.json`) — native HTTP transport:
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-tucuman-compras-monitor": {
+      "url": "https://mcp.apify.com/?tools=stefano_seggio/tucuman-compras-monitor",
+      "headers": {
+        "Authorization": "Bearer ${APIFY_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**Windsurf** (`~/.codeium/windsurf/mcp_config.json`) — uses `serverUrl`, not `url`. Windsurf's `${env:...}` syntax genuinely does resolve from the environment, unlike Claude Desktop's config above:
+
+```json
+{
+  "mcpServers": {
+    "delta-registry-tucuman-compras-monitor": {
+      "serverUrl": "https://mcp.apify.com/?tools=stefano_seggio/tucuman-compras-monitor",
+      "headers": {
+        "Authorization": "Bearer ${env:APIFY_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Want the full 28-actor fleet in one closed-scope config instead of just this Actor? See [`MCP_INTEGRATION.md`](https://github.com/stefanoseggio/delta-registry-website/blob/main/MCP_INTEGRATION.md) in the `delta-registry-website` repo.
+
 ## Input & Output Schema
 
 ### Input
@@ -155,7 +208,7 @@ Fields as defined in [`.actor/input_schema.json`](.actor/input_schema.json):
 
 ### Output
 
-One real record from this Actor's own dataset, matching `.actor/dataset_schema.json`:
+One real record from this Actor's own dataset, matching `.actor/dataset_schema.json` (trimmed for length — see the full field table below for the 8 additional fields, e.g. `renglones`, `pliegoPdfUrl`, not shown in this particular record):
 
 ```json
 {
@@ -190,9 +243,17 @@ One real record from this Actor's own dataset, matching `.actor/dataset_schema.j
 | `rubro` | Category/industry of the tender. |
 | `numeroExpediente` / `numeroConvocatoria` | The portal's own file/expediente and convocatoria numbers. |
 | `primerRenglon` | The first line-item description. |
+| `renglones` | Full array of line items, each with `renglon` (item number) and `descripcion`. |
 | `valorPliego` | Price of the bidding document (pliego), as published. |
 | `presupuestoOficial` | Official budget for the tender, as published. |
+| `garantiaOfertaExigida` | Bid guarantee (garantía de oferta) amount required, as published; `null` when not specified. |
 | `fechaAperturaSobres` | Bid-opening date/time. |
+| `fechaAdjudicacion` | Award date; `null` until the tender reaches `estadoCompra = 3` (awarded). |
+| `lugarApertura` | Where bids are opened, as published; `null` when not specified. |
+| `informesAdquisicionPliegos` | Where/how to obtain the pliego (bidding document), as published; `null` when not specified. |
+| `autorizadoPor` | Authorizing official/resolution, as published; `null` when not specified. |
+| `objetoLibre` | Free-text object/subject of the tender, when the portal publishes one separately from `primerRenglon`. |
+| `pliegoPdfUrl` | Direct link to the pliego PDF, when the portal publishes one; `null` otherwise. |
 | `record_id` | Stable identifier for this record (mirrors `idCompra`). |
 | `event_type` | `NEW_LISTING`, `STATUS_CHANGE`, `UPDATED`, or `UNCHANGED`. |
 | `scraped_at` | UTC timestamp this record was captured. |
