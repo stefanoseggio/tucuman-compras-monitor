@@ -12,7 +12,14 @@ import type { ActorInput, EstadoCompra } from './types.js';
 const RESULT_EVENT_NAME = 'result';
 
 await Actor.init();
-await run();
+try {
+    await run();
+} catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log.exception(error instanceof Error ? error : new Error(message), 'Run failed');
+    await Actor.setValue('LAST_ERROR', { message, at: new Date().toISOString() });
+    await Actor.fail(`Tucuman public tenders extraction failed: ${message}`);
+}
 await Actor.exit();
 
 async function run(): Promise<void> {
