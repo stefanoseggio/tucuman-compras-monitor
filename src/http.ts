@@ -1,3 +1,11 @@
+import { Impit, type ImpitResponse } from 'impit';
+
+// One Impit instance per actor run: it holds the connection pool and TLS
+// session cache, and gives every request a real, internally-consistent
+// Chrome TLS/HTTP2 fingerprint instead of Node's native (and distinctively
+// bot-shaped) one - see AGENTS.md for why this was added.
+const impit = new Impit({ browser: 'chrome' });
+
 async function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(resolve, ms);
@@ -22,9 +30,9 @@ class HttpStatusError extends Error {
     }
 }
 
-// Native fetch(), no proxy needed - verified live 2026-09-04: comprasbys.tucuman.gob.ar
-// is reachable with a plain 200 OK from a plain datacenter IP, unlike pba-tenders-monitor's
-// and cordoba-compras-monitor's targets.
+// No proxy needed - verified live 2026-09-04: comprasbys.tucuman.gob.ar is reachable
+// with a plain 200 OK from a plain datacenter IP, unlike pba-tenders-monitor's and
+// cordoba-compras-monitor's targets.
 //
 // Retries with exponential backoff on network errors, per-attempt timeouts, and
 // 408/425/429/5xx only. A permanent 4xx (e.g. a bad query param, a removed page) is
@@ -35,11 +43,11 @@ export async function fetchWithRetry(
     maxRetries = 4,
     baseDelayMs = 1000,
     timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<Response> {
+): Promise<ImpitResponse> {
     let lastError: Error = new Error('unreachable');
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) });
+            const response = await impit.fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) });
             if (response.ok) return response;
             if (!isRetriableStatus(response.status)) throw new HttpStatusError(response.status);
             lastError = new HttpStatusError(response.status);

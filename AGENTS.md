@@ -140,6 +140,37 @@ every request made while building this (listing pages, the alternate
   `RESULT_EVENT_NAME='result'` once per pushed item, stops on
   `eventChargeLimitReached`.
 
+## HTTP transport: `impit`, not the native `fetch`
+
+`src/http.ts`'s `fetchWithRetry` calls a module-level `Impit` instance
+(`new Impit({ browser: 'chrome' })`, from the `impit` package) instead of
+the global `fetch` - added 2026-09-19 as a fleet-wide TLS-fingerprint-
+hardening pilot (proactive hardening, not a bug fix - Node's `fetch` isn't
+deprecated, and nothing about this portal was broken by it). Two things to
+know if you touch this file again:
+- **`impit.fetch()` returns an `ImpitResponse`, not the DOM `Response`.**
+  `fetchWithRetry`'s return type is `Promise<ImpitResponse>` (imported as
+  `import { Impit, type ImpitResponse } from 'impit'`), not `Promise<Response>`
+  - `ImpitResponse` is missing several `Response` members (`type`,
+  `redirected`, `bodyUsed`, `blob()`, `formData()`), so the old `Response`
+  annotation fails `tsc` once the call site returns an `ImpitResponse`.
+  `fetchHtmlWithRetry` only ever reads `.arrayBuffer()` off it, which both
+  types provide, so nothing downstream needed to change. This file has no
+  `init: RequestInit` parameter of its own (the retry loop builds its
+  request options inline), so the separate `impit` `RequestInit.method`
+  narrowing that bit `florida-tenders-monitor` did not come up here.
+- **No test-mocking changes were needed.** This actor's test suite does not
+  mock `fetch`, `http.ts`, or `impit` at all - `test/fetchListing.test.ts`'s
+  only HTTP-touching tests are real, live requests against
+  `comprasbys.tucuman.gob.ar`, gated by `describe.skipIf(process.env.CI)`
+  (skipped in CI's `build-and-test` job, re-run intentionally, with `CI`
+  unset, by the separate `live-smoke-test` job). Since there was never a
+  `vi.stubGlobal('fetch', ...)` mock to bypass, `Impit.fetch()` being a
+  native binding rather than a wrapper around the global `fetch` (the
+  failure mode that broke 5 tests on `florida-tenders-monitor`) had nothing
+  to silently break here - re-verified by running the live suite
+  (`CI= npx vitest run test/fetchListing.test.ts`) green after the swap.
+
 ## Delta engine v2 (2026-09-08)
 
 Supersedes the "record_id / event_type" and "State design" subsections
