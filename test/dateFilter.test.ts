@@ -3,23 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { isWithinDateRange, parseSourceDate } from '../src/dateFilter.js';
 
 describe('parseSourceDate', () => {
+    // Tucuman is a fixed UTC-3, no DST since 2009 (see SITE_UTC_OFFSET_MINUTES in
+    // src/dateFilter.ts) - the portal's wall-clock string is always 3h behind UTC,
+    // regardless of the runtime's own timezone.
     it('parses the portal\'s "DD/MM/YYYY, HH:MM:SS" format (real fechaAperturaSobres value)', () => {
         const date = parseSourceDate('10/09/2026, 12:30:00');
         expect(date).not.toBeNull();
-        expect(date!.getFullYear()).toBe(2026);
-        expect(date!.getMonth()).toBe(8); // September, 0-indexed
-        expect(date!.getDate()).toBe(10);
-        expect(date!.getHours()).toBe(12);
-        expect(date!.getMinutes()).toBe(30);
+        expect(date!.toISOString()).toBe('2026-09-10T15:30:00.000Z');
     });
 
     it('parses the portal\'s date-only "DD/MM/YYYY" format (real fechaAdjudicacion value)', () => {
         const date = parseSourceDate('08/11/2023');
         expect(date).not.toBeNull();
-        expect(date!.getFullYear()).toBe(2023);
-        expect(date!.getMonth()).toBe(10); // November, 0-indexed
-        expect(date!.getDate()).toBe(8);
-        expect(date!.getHours()).toBe(0);
+        expect(date!.toISOString()).toBe('2023-11-08T03:00:00.000Z');
     });
 
     it('returns null for null, undefined and empty input rather than throwing', () => {
