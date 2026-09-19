@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.0.0](https://github.com/stefanoseggio/tucuman-compras-monitor/compare/tucuman-compras-monitor-v2.0.0...tucuman-compras-monitor-v3.0.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* v2.0 delta engine - STATUS_CHANGE/UPDATED via cross-estado fingerprinted state
+
+### Features
+
+* v2.0 delta engine - STATUS_CHANGE/UPDATED via cross-estado fingerprinted state ([1f514b6](https://github.com/stefanoseggio/tucuman-compras-monitor/commit/1f514b6a8e1f5ac084d5017d401dc4835c566b1b))
+
+
+### Bug Fixes
+
+* bump transitive adm-zip to 0.6.1, resolving a HIGH-severity CVE ([#10](https://github.com/stefanoseggio/tucuman-compras-monitor/issues/10)) ([4072e18](https://github.com/stefanoseggio/tucuman-compras-monitor/commit/4072e184e53ade4b9d7a13742561d853168c101f))
+* **ci:** pass RELEASE_PLEASE_TOKEN so release PRs skip the bot-approval gate ([220ab70](https://github.com/stefanoseggio/tucuman-compras-monitor/commit/220ab70a8b707419bab2c9b1b6ba6f6c144a583d))
+* **http:** add per-attempt timeout and status-discriminating retry ([#8](https://github.com/stefanoseggio/tucuman-compras-monitor/issues/8)) ([fdd835c](https://github.com/stefanoseggio/tucuman-compras-monitor/commit/fdd835c1c8ca5480401cce590c779431b695a3d9))
+* use fixed Tucuman UTC-3 offset for date parsing, add top-level error handling ([#9](https://github.com/stefanoseggio/tucuman-compras-monitor/issues/9)) ([e2794a7](https://github.com/stefanoseggio/tucuman-compras-monitor/commit/e2794a7dc9d6890cd62df70a5f3af57796331091))
+
 ## 2.0.0 - 2026-09-08
 
 The v2 delta engine: real lifecycle transitions and amendment detection, replacing the v1 retrofit's "always NEW_LISTING" limitation - see AGENTS.md "Delta engine v2" for the full technical reasoning.
